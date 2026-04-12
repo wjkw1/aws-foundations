@@ -16,8 +16,15 @@ It uses terraform to manage the security, billing, identity, and access setup. G
 ### Identity & access (`identity_center.tf`)
 
 - **Identity Center user** — your SSO login
-- **Permission sets** — IamAdmin, Developer, DeveloperReadOnly, Billing (all scoped with deny policies)
 - **Account assignments** — all four sets bound to your account
+- **Permission sets** — IamAdmin, Developer, DeveloperReadOnly, Billing (all scoped with deny policies to reduce blast radius)
+
+  | Set               | Based on                       | Denies             | Use when                              |
+  | ----------------- | ------------------------------ | ------------------ | ------------------------------------- |
+  | IamAdmin          | IAMFullAccess + ReadOnlyAccess | Billing            | Managing users, roles, and policies   |
+  | Developer         | PowerUserAccess                | IAM, Orgs, Billing | Day-to-day AWS building               |
+  | DeveloperReadOnly | ReadOnlyAccess                 | IAM, Orgs, Billing | Auditing / investigating without risk |
+  | Billing           | Billing + Budgets              | nothing            | Checking costs and managing budgets   |
 
 ### Security baseline (`security.tf`)
 
