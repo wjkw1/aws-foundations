@@ -112,8 +112,7 @@ user_last_name  = "Last"
 
 Terraform needs this bucket to exist before `terraform init`.
 
-You have two options, create it manually from the console or programatically like below.
-Ensure that you:
+Create it manually via the console or with the script below. Either way, ensure the bucket has:
 
 - Name: must match what you put in `backend.hcl`
 - Region: `ap-southeast-2`
