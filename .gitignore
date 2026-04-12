@@ -1,0 +1,22 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Vars files and backend config contain account-specific values — commit only the examples
+terraform.tfvars
+*.auto.tfvars
+backend.hcl
+
+# Credentials / secrets
+.env
+*.pem
+*.key
+credentials
