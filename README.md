@@ -2,7 +2,32 @@
 
 This repository set up the foundations for my aws account.
 
-I use terraform to manage the identity and access setup. Giving me repeatability when I need to securely setup an AWS account in future.
+It uses terraform to manage the security, billing, identity, and access setup. Giving me repeatability when I need to securely setup an AWS account in future.
+
+## Contents
+
+- [What Terraform configures](#what-terraform-configures)
+- [Prerequisites](#prerequisites)
+- [Getting started](#getting-started)
+- [Day to day after bootstrap](#day-to-day-after-bootstrap)
+
+## What Terraform configures
+
+### Identity & access (`identity_center.tf`)
+
+- **Identity Center user** — your SSO login
+- **Permission sets** — IamAdmin, Developer, DeveloperReadOnly, Billing (all scoped with deny policies)
+- **Account assignments** — all four sets bound to your account
+
+### Security baseline (`security.tf`)
+
+- **S3 account public access block** — prevents any bucket in the account from being made public by default
+- **CloudTrail** — multi-region audit trail of every API call; logs stored in a dedicated S3 bucket with 90-day retention and file integrity validation enabled
+- **CloudWatch Logs + root account alarm** — CloudTrail streams to a log group; a metric filter fires an SNS alert the moment the root user is used
+- **SNS security-alerts topic** — email subscription to `user_email`; delivers root alarm notifications
+- **AWS Budget** — monthly spend budget with alerts at 80% actual and 100% forecasted, sent to `user_email`
+
+> **After first `terraform apply`:** AWS will send a subscription confirmation email to your `user_email`. You must click the confirmation link before the root account alarm and budget alerts will actually deliver.
 
 ## Prerequisites
 

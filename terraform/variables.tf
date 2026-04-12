@@ -30,3 +30,15 @@ variable "session_duration_billing" {
   type        = string
   default     = "PT4H"
 }
+
+variable "monthly_budget_usd" {
+  description = "Monthly spend budget threshold in USD — alerts fire at 80% actual and 100% forecasted"
+  type        = number
+  default     = 20
+}
+
+variable "cloudtrail_log_retention_days" {
+  description = "How long to retain CloudTrail logs in S3 and CloudWatch Logs (days)"
+  type        = number
+  default     = 30
+}
