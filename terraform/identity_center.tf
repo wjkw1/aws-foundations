@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Data — discover the Identity Center instance (there is only ever one)
+# Data - discover the Identity Center instance (there is only ever one)
 # ---------------------------------------------------------------------------
 data "aws_ssoadmin_instances" "main" {}
 data "aws_caller_identity" "current" {}
@@ -12,7 +12,6 @@ locals {
   deny_billing_actions = [
     "aws-portal:*", # legacy console, kept for completeness
     "billing:*",
-    "budgets:*",
     "ce:*",
     "cur:*",
     "freetier:*",
@@ -179,7 +178,7 @@ resource "aws_ssoadmin_permission_set_inline_policy" "developer_read_only_deny" 
 # ===========================================================================
 # Permission set: Billing
 # Policies : Billing (job function) + Budgets Actions
-# Deny     : none — this set is intentionally scoped to billing only
+# Deny     : none - this set is intentionally scoped to billing only
 # ===========================================================================
 resource "aws_ssoadmin_permission_set" "billing" {
   name             = "Billing"
@@ -203,7 +202,43 @@ resource "aws_ssoadmin_managed_policy_attachment" "billing_budgets_actions" {
 }
 
 # ===========================================================================
-# Account assignments — user → all four permission sets → your account
+# Permission set: InfraAdmin
+# Policies : AdministratorAccess
+# Deny     : Billing
+# Use when : local Terraform runs or any elevated infrastructure work
+# ===========================================================================
+resource "aws_ssoadmin_permission_set" "infra_admin" {
+  name             = "InfraAdmin"
+  description      = "AdministratorAccess for infrastructure work; billing denied; short 1-hour session"
+  instance_arn     = local.sso_instance_arn
+  session_duration = var.session_duration_infra_admin
+}
+
+resource "aws_ssoadmin_managed_policy_attachment" "infra_admin_admin_access" {
+  instance_arn       = local.sso_instance_arn
+  permission_set_arn = aws_ssoadmin_permission_set.infra_admin.arn
+  managed_policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+resource "aws_ssoadmin_permission_set_inline_policy" "infra_admin_deny" {
+  instance_arn       = local.sso_instance_arn
+  permission_set_arn = aws_ssoadmin_permission_set.infra_admin.arn
+
+  inline_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "DenyBilling"
+        Effect   = "Deny"
+        Action   = local.deny_billing_actions
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+# ===========================================================================
+# Account assignments - user → all five permission sets → your account
 # ===========================================================================
 locals {
   permission_sets = {
@@ -211,10 +246,11 @@ locals {
     developer           = aws_ssoadmin_permission_set.developer.arn
     developer_read_only = aws_ssoadmin_permission_set.developer_read_only.arn
     billing             = aws_ssoadmin_permission_set.billing.arn
+    infra_admin         = aws_ssoadmin_permission_set.infra_admin.arn
   }
 }
 
-resource "aws_ssoadmin_account_assignment" "admin_user" {
+resource "aws_ssoadmin_account_assignment" "admin" {
   for_each = local.permission_sets
 
   instance_arn       = local.sso_instance_arn

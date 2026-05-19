@@ -1,8 +1,8 @@
 # AWS Foundations
 
-This repository set up the foundations for my aws account.
+This repository sets up the foundations for an AWS account.
 
-It uses terraform to manage the security, billing, identity, and access setup. Giving me repeatability when I need to securely setup an AWS account in future.
+It uses Terraform to manage the security, billing, identity, and access setup — giving you repeatability when you need to securely set up an AWS account.
 
 ## Contents
 
@@ -10,42 +10,45 @@ It uses terraform to manage the security, billing, identity, and access setup. G
 - [Prerequisites](#prerequisites)
 - [Getting started](#getting-started)
 - [Day to day after bootstrap](#day-to-day-after-bootstrap)
+- [Granting a new repo GitHub Actions CI access](#granting-a-new-repo-github-actions-ci-access)
+- [Troubleshooting](#troubleshooting)
 
 ## What Terraform configures
 
 ### Identity & access (`identity_center.tf`)
 
-- **Identity Center user** — your SSO login
-- **Account assignments** — all four sets bound to your account
-- **Permission sets** — IamAdmin, Developer, DeveloperReadOnly, Billing (all scoped with deny policies to reduce blast radius)
+- **Identity Center user** - your SSO login
+- **Account assignments** - all five sets bound to your account
+- **Permission sets** - IamAdmin, Developer, DeveloperReadOnly, Billing, InfraAdmin (all scoped with deny policies to reduce blast radius)
 
-  | Set               | Based on                       | Denies             | Use when                              |
-  | ----------------- | ------------------------------ | ------------------ | ------------------------------------- |
-  | IamAdmin          | IAMFullAccess + ReadOnlyAccess | Billing            | Managing users, roles, and policies   |
-  | Developer         | PowerUserAccess                | IAM, Orgs, Billing | Day-to-day AWS building               |
-  | DeveloperReadOnly | ReadOnlyAccess                 | IAM, Orgs, Billing | Auditing / investigating without risk |
-  | Billing           | Billing + Budgets              | nothing            | Checking costs and managing budgets   |
+  | Set               | Based on                       | Denies             | Session | Use when                                     |
+  | ----------------- | ------------------------------ | ------------------ | ------- | -------------------------------------------- |
+  | IamAdmin          | IAMFullAccess + ReadOnlyAccess | Billing            | 8h      | Managing users, roles, and policies          |
+  | Developer         | PowerUserAccess                | IAM, Orgs, Billing | 8h      | Day-to-day AWS building                      |
+  | DeveloperReadOnly | ReadOnlyAccess                 | IAM, Orgs, Billing | 8h      | Auditing / investigating without risk        |
+  | Billing           | Billing + Budgets              | nothing            | 4h      | Checking costs and managing budgets          |
+  | InfraAdmin        | AdministratorAccess            | Billing            | 1h      | Local Terraform runs and elevated infra work |
 
 ### Security baseline (`security.tf`)
 
-- **S3 account public access block** — prevents any bucket in the account from being made public by default
-- **CloudTrail** — multi-region audit trail of every API call; logs stored in a dedicated S3 bucket with 90-day retention and file integrity validation enabled
-- **CloudWatch Logs + root account alarm** — CloudTrail streams to a log group; a metric filter fires an SNS alert the moment the root user is used
-- **SNS security-alerts topic** — email subscription to `user_email`; delivers root alarm notifications
-- **AWS Budget** — monthly spend budget with alerts at 80% actual and 100% forecasted, sent to `user_email`
+- **S3 account public access block** - prevents any bucket in the account from being made public by default
+- **CloudTrail** - multi-region audit trail of every API call; logs stored in a dedicated S3 bucket with 90-day retention and file integrity validation enabled
+- **CloudWatch Logs + root account alarm** - CloudTrail streams to a log group; a metric filter fires an SNS alert the moment the root user is used
+- **SNS security-alerts topic** - email subscription to `user_email`; delivers root alarm notifications
+- **AWS Budget** - monthly spend budget with alerts at 80% actual and 100% forecasted, sent to `user_email`
 
 > **After first `terraform apply`:** AWS will send a subscription confirmation email to your `user_email`. You must click the confirmation link before the root account alarm and budget alerts will actually deliver.
 
 ## Prerequisites
 
-I used Homebrew to install these:
+Install using Homebrew or your preferred package manager:
 
-- [Install Terraform CLI](https://developer.hashicorp.com/terraform/install)
-- [Install AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- [Terraform CLI](https://developer.hashicorp.com/terraform/install)
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
 ## Getting started
 
-We will secure root, use aws cli to create the s3 backend, then use terraform to provision our IAM permission sets.
+Secure root, use the AWS CLI to create the S3 backend, then use Terraform to provision the IAM permission sets.
 
 > Note: The Amazon S3 backend gives us encryption at rest and easy lockfile config. Lock files are innate now and no longer require dynamoDB.
 
@@ -56,11 +59,11 @@ Do this before touching Terraform. The root account is the one thing you can nev
 - Log in at aws.amazon.com with your root email
 - Go to **IAM → Security credentials**
 - Enable **MFA** (use an authenticator app)
-- Do not create root access keys — ever
+- Do not create root access keys ever
 
-### 2. Enable identity center (manual — console only)
+### 2. Enable identity center (manual - console only)
 
-Terraform cannot enable this for you. This lets us use AWS SSO logins once the terraform applies the infrastructure.
+Terraform cannot enable this for you. This lets you use AWS SSO logins once Terraform applies the infrastructure.
 
 1. Go to **AWS IAM Identity Center → Enable**
 2. Leave all settings default for now
@@ -75,7 +78,7 @@ This is a short-lived admin account just to run Terraform the first time.
 - Permissions: Attach `AdministratorAccess` directly
 - After creation: **Security credentials → Create access key**
   - Use case: CLI
-  - Save the Key ID and Secret — you only see the secret once, so make sure to copy it
+  - Save the Key ID and Secret - you only see the secret once, so make sure to copy it
 
 ### 4. Configure AWS CLI locally
 
@@ -101,13 +104,15 @@ cp terraform.tfvars.example terraform.tfvars
 
 ```
 
-**backend.hcl** — your S3 state bucket name:
+**backend.hcl** - your S3 state bucket name:
 
 ```hcl
 bucket = "tfstate-<account-id>-aws-foundations"
 ```
 
-**terraform.tfvars** — your Identity Center user details:
+> Get your account ID: `aws sts get-caller-identity --query Account --output text`
+
+**terraform.tfvars** - your Identity Center user details:
 
 ```hcl
 user_email      = "you@example.com"
@@ -172,20 +177,22 @@ terraform apply
 
 ### 8. Switch to SSO (and delete the IAM user)
 
-Configure your SSO profile:
+Set up SSO profiles for each role you want to assume locally. The `infra-admin` profile (InfraAdmin permission set) is used here as it's the only role with broad enough permissions to run Terraform locally.
 
-```
-aws configure sso
-# SSO start URL: find in Identity Center → Settings → AWS access portal URL
-# Region: ap-southeast-2
-# Profile name: admin
-```
-
-Log in:
+1. Configure your SSO profiles first time:
 
 ```zsh
-aws sso login --profile admin
-export AWS_PROFILE=admin
+aws configure sso
+# SSO start URL: find in terraform output OR Identity Center → Settings → AWS access portal URL
+# Region: ap-southeast-2
+# Profile name: infra-admin
+```
+
+2. Later, you can login to sso roles by using the profile you configured:
+
+```zsh
+aws sso login --profile infra-admin
+export AWS_PROFILE=infra-admin
 ```
 
 Verify:
@@ -193,7 +200,7 @@ Verify:
 ```zsh
 aws sts get-caller-identity
 # it should say something like:
-# arn:aws:sts::123456789:assumed-role/AWSReservedSSO_IamAdmin_xxxx/your@email.com
+# arn:aws:sts::123456789101:assumed-role/AWSReservedSSO_InfraAdmin_xxxx/your_email@example.com
 ```
 
 Once confirmed working:
@@ -206,11 +213,75 @@ Once confirmed working:
 When you need to make IAM changes or any foundation changes, log back in and then run terraform commands.
 
 ```zsh
-aws sso login --profile admin
-export AWS_PROFILE=admin
+aws sso login --profile infra-admin
+export AWS_PROFILE=infra-admin
 cd terraform
 terraform plan
 terraform apply
 ```
 
-Your session lasts 8 hours, then re-run `aws sso login`.
+Your `infra-admin` session lasts 1 hour, other roles last 8 hours.
+
+## Granting a new repo GitHub Actions CI access
+
+CI access is controlled by the `github_repos` map in [terraform/github_repos.tf](terraform/github_repos.tf). Adding an entry there automatically creates a plan role and an apply role for that repo, each scoped to the correct S3 state bucket.
+
+### 1. Add the repo
+
+```hcl
+locals {
+  github_repos = {
+    "aws-foundations" = { state_bucket = var.tf_state_bucket }
+    "your-new-repo"   = { state_bucket = "tfstate-<account-id>-your-new-repo" }  # add it here
+  }
+}
+```
+
+Each value must include `state_bucket` - the S3 bucket used as that repo's Terraform backend. The plan and apply roles are each granted read/write access to that bucket.
+
+### 2. Apply changes
+
+Assumes you've setup SSO access with infra admin properly
+
+```zsh
+cd terraform
+terraform plan   # confirm two new roles appear: github-actions-tf-plan-<repo> and github-actions-tf-apply-<repo>
+terraform apply
+```
+
+### 3. Configure the workflow in the new repo
+
+In the repo's GitHub Actions workflow, request the OIDC token and assume the appropriate role:
+
+```yaml
+permissions:
+  id-token: write
+  contents: read
+
+steps:
+  - uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: arn:aws:iam::<account-id>:role/github-actions-tf-plan-your-new-repo # or tf-apply-your-new-repo
+      aws-region: ap-southeast-2
+```
+
+> Get your account ID: `aws sts get-caller-identity --query Account --output text`
+
+The plan role trusts pushes to `main` and pull requests; the apply role trusts pushes to `main` only.
+
+## Troubleshooting
+
+**`terraform apply` fails with "Identity Center not found" or similar**
+Identity Center must be enabled manually in the console before running Terraform (see step 2). Terraform cannot enable it.
+
+**`terraform init` fails immediately**
+The S3 state bucket must exist before `terraform init`. Complete step 6 first.
+
+**SNS / budget alerts never arrive**
+AWS sends a subscription confirmation email after the first `terraform apply`. You must click the link in that email before alerts will deliver.
+
+**S3 bucket name already exists**
+Bucket names are globally unique. If the generated name `tfstate-<account-id>-aws-foundations` is taken, choose a different suffix and update `backend.hcl` to match.
+
+**`aws sso login` prompt appears mid-Terraform run**
+The InfraAdmin session lasts 1 hour. Re-run `aws sso login --profile infra-admin` and retry.

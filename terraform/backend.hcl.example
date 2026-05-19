@@ -1,5 +1,5 @@
 # Copy this file to backend.hcl and fill in your bucket name.
-# backend.hcl is git-ignored — it contains account-specific values
+# backend.hcl is git-ignored - it contains account-specific values
 # that cannot be expressed as Terraform variables.
 #
 # Usage: terraform init -backend-config=backend.hcl

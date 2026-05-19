@@ -31,8 +31,14 @@ variable "session_duration_billing" {
   default     = "PT4H"
 }
 
+variable "session_duration_infra_admin" {
+  description = "Session duration for the InfraAdmin permission set - kept short as it is only assumed for infrastructure work"
+  type        = string
+  default     = "PT1H"
+}
+
 variable "monthly_budget_usd" {
-  description = "Monthly spend budget threshold in USD — alerts fire at 80% actual and 100% forecasted"
+  description = "Monthly spend budget threshold in USD - alerts fire at 80% actual and 100% forecasted"
   type        = number
   default     = 20
 }
@@ -41,4 +47,14 @@ variable "cloudtrail_log_retention_days" {
   description = "How long to retain CloudTrail logs in S3 and CloudWatch Logs (days)"
   type        = number
   default     = 30
+}
+
+variable "github_org" {
+  description = "GitHub organisation or username that owns the repositories using OIDC"
+  type        = string
+}
+
+variable "tf_state_bucket" {
+  description = "S3 bucket name used as the Terraform state backend"
+  type        = string
 }

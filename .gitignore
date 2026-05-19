@@ -9,7 +9,7 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Vars files and backend config contain account-specific values — commit only the examples
+# Vars files and backend config contain account-specific values - commit only the examples
 terraform.tfvars
 *.auto.tfvars
 backend.hcl
@@ -19,3 +19,4 @@ backend.hcl
 *.pem
 *.key
 credentials
+.DS_Store

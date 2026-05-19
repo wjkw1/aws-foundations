@@ -11,7 +11,7 @@ resource "aws_s3_account_public_access_block" "main" {
 }
 
 # ---------------------------------------------------------------------------
-# CloudTrail — audit log of every API call in the account
+# CloudTrail - audit log of every API call in the account
 # ---------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "cloudtrail" {
@@ -103,7 +103,7 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
   })
 }
 
-# CloudWatch Logs group — required to drive the root account alarm
+# CloudWatch Logs group - required to drive the root account alarm
 resource "aws_cloudwatch_log_group" "cloudtrail" {
   name              = "/aws/cloudtrail/aws-foundations"
   retention_in_days = var.cloudtrail_log_retention_days
@@ -156,14 +156,14 @@ resource "aws_cloudtrail" "main" {
 }
 
 # ---------------------------------------------------------------------------
-# SNS topic — shared sink for security alerts
+# SNS topic - shared sink for security alerts
 # ---------------------------------------------------------------------------
 
 resource "aws_sns_topic" "security_alerts" {
   name = "security-alerts"
 }
 
-# Email subscription — AWS sends a confirmation email; must be clicked before alerts fire
+# Email subscription - AWS sends a confirmation email; must be clicked before alerts fire
 resource "aws_sns_topic_subscription" "security_alerts_email" {
   topic_arn = aws_sns_topic.security_alerts.arn
   protocol  = "email"
@@ -193,7 +193,7 @@ resource "aws_cloudwatch_log_metric_filter" "root_account_usage" {
 
 resource "aws_cloudwatch_metric_alarm" "root_account_usage" {
   alarm_name          = "root-account-usage"
-  alarm_description   = "Root account was used — investigate immediately"
+  alarm_description   = "Root account was used - investigate immediately"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   metric_name         = aws_cloudwatch_log_metric_filter.root_account_usage.metric_transformation[0].name
@@ -207,7 +207,7 @@ resource "aws_cloudwatch_metric_alarm" "root_account_usage" {
 }
 
 # ---------------------------------------------------------------------------
-# AWS Budgets — monthly spend alerts
+# AWS Budgets - monthly spend alerts
 # Notifies at 80% actual spend and 100% forecasted spend.
 # ---------------------------------------------------------------------------
 
