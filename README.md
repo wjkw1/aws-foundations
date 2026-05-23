@@ -228,11 +228,30 @@ CI access is controlled by the `github_repos` map in [terraform/github_repos.tf]
 
 ### 1. Add the repo
 
+Two places to update:
+
+- `github_repos` create the required IAM roles and policies
+- `repos_needing_state_bucket` does what the name suggests, creates s3 buckets
+
 ```hcl
 locals {
   github_repos = {
-    "aws-foundations" = { state_bucket = var.tf_state_bucket }
-    "your-new-repo"   = { state_bucket = "tfstate-<account-id>-your-new-repo" }  # add it here
+    "aws-foundations" = { state_bucket = var.foundations_state_bucket }
+    "devops-profile-coffee-card-app-demo" = {
+      state_bucket = aws_s3_bucket.terraform_state["devops-profile-coffee-card-app-demo"].id
+    }
+    # 1. add your resource here
+    "your-new-repo"   = { state_bucket = "tfstate-<account-id>-your-new-repo" }
+  }
+
+  repos_needing_state_bucket = {
+    "devops-profile-coffee-card-app-demo" = {
+      state_bucket = "terraform-state-${data.aws_caller_identity.current.account_id}-coffee-card-app-demo"
+    }
+    # 2. add your resource here if an S3 bucket is required
+    "your-new-repo" {
+      state_bucket = "terraform-state-${data.aws_caller_identity.current.account_id}-coffee-card-app-demo"
+    }
   }
 }
 ```
