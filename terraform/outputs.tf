@@ -32,3 +32,10 @@ output "github_actions_role_arns" {
     }
   }
 }
+
+output "github_repos_bucket_names" {
+  description = "S3 bucket names for GitHub repos' Terraform state backends - reference these in the repos' GitHub Actions workflows"
+  value = {
+    for key in keys(local.github_repos) : key => local.github_repos[key].state_bucket
+  }
+}

@@ -14,4 +14,4 @@ cloudtrail_log_retention_days = 30
 # GitHub OIDC policy
 
 github_org = "Your GitHub organisation or username that owns the repository"
-tf_state_bucket = "tfstate-<account-id>-example-aws-foundations"
+foundations_state_bucket = "tfstate-<account-id>-example-aws-foundations"

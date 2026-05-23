@@ -54,7 +54,7 @@ variable "github_org" {
   type        = string
 }
 
-variable "tf_state_bucket" {
+variable "foundations_state_bucket" {
   description = "S3 bucket name used as the Terraform state backend"
   type        = string
 }
