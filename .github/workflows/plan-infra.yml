@@ -3,7 +3,7 @@ name: PR Infra CI
 on:
     pull_request:
         paths:
-            - "infra/**"
+            - "terraform/**"
 
 jobs:
     plan:
@@ -15,7 +15,7 @@ jobs:
 
         defaults:
             run:
-                working-directory: infra
+                working-directory: terraform
 
         env:
             AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
@@ -34,7 +34,7 @@ jobs:
             - name: Configure AWS Credentials
               uses: aws-actions/configure-aws-credentials@v6.1.0
               with:
-                  role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/github-actions-tf-plan-devops-profile-coffee-card-app-demo
+                  role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/github-actions-tf-plan-aws-foundations
                   aws-region: ap-southeast-2
             - run: |
                   # Check our AWS credentials
@@ -61,7 +61,7 @@ jobs:
               env:
                   TF_VARS_FILE_CONTENTS: ${{ secrets.TF_VARS_FILE_CONTENTS}}
               run: |
-                  echo "$TF_VARS_FILE_CONTENTS" > prod.tfvars
+                  printf '%s' "$TF_VARS_FILE_CONTENTS" > prod.tfvars
 
             - name: Terraform Plan
               id: plan
