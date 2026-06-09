@@ -1,0 +1,59 @@
+name: Apply Infra
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "terraform/**"
+
+jobs:
+    apply:
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write
+            contents: read
+
+        defaults:
+            run:
+                working-directory: terraform
+
+        env:
+            AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Mask secrets
+              env:
+                  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+                  USER_EMAIL: ${{ secrets.USER_EMAIL }}
+              run: |
+                  echo "::add-mask::$AWS_ACCOUNT_ID"
+                  echo "::add-mask::$USER_EMAIL"
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v6.1.0
+              with:
+                  role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/github-actions-tf-apply-aws-foundations
+                  aws-region: ap-southeast-2
+
+            - run: aws sts get-caller-identity
+
+            - uses: hashicorp/setup-terraform@v4
+
+            - name: Initialise Terraform
+              id: init
+              env:
+                  TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+              run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -input=false
+
+            - name: Write tfvars to file from GitHub Secret
+              env:
+                  TF_VARS_FILE_CONTENTS: ${{ secrets.TF_VARS_FILE_CONTENTS }}
+              run: printf '%s' "$TF_VARS_FILE_CONTENTS" > prod.tfvars
+
+            - name: Terraform Apply
+              env:
+                  TF_VAR_user_email: ${{ secrets.USER_EMAIL }}
+              run: terraform apply -auto-approve -input=false -var-file=prod.tfvars
