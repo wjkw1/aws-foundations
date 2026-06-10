@@ -50,8 +50,8 @@ jobs:
 
             - name: Write tfvars to file from GitHub Secret
               env:
-                  TF_VARS_FILE_CONTENTS: ${{ secrets.TF_VARS_FILE_CONTENTS }}
-              run: printf '%s' "$TF_VARS_FILE_CONTENTS" > prod.tfvars
+                  TF_VARS_FILE_CONTENT: ${{ secrets.TF_VARS_FILE_CONTENT }}
+              run: printf '%s' "$TF_VARS_FILE_CONTENT" > prod.tfvars
 
             - name: Terraform Apply
               env:
