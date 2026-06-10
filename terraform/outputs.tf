@@ -18,7 +18,7 @@ output "permission_set_arns" {
     developer_read_only = aws_ssoadmin_permission_set.developer_read_only.arn
     billing             = aws_ssoadmin_permission_set.billing.arn
   }
-  sensitive   = true
+  sensitive = true
 }
 
 output "github_oidc_provider_arn" {
@@ -35,7 +35,7 @@ output "github_actions_role_arns" {
       apply = aws_iam_role.github_actions_tf_apply[key].arn
     }
   }
-  sensitive   = true
+  sensitive = true
 }
 
 output "github_repos_bucket_names" {
@@ -43,5 +43,5 @@ output "github_repos_bucket_names" {
   value = {
     for key in keys(local.github_repos) : key => local.github_repos[key].state_bucket
   }
-  sensitive   = true
+  sensitive = true
 }
