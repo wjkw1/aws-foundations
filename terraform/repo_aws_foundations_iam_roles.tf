@@ -15,7 +15,7 @@ resource "aws_iam_role_policy" "aws_foundations_tf_apply" {
       {
         Sid      = "IdentityCenter"
         Effect   = "Allow"
-        Action   = ["sso:ListInstances", "sso-admin:*", "identitystore:*"]
+        Action   = ["sso:*", "identitystore:*"]
         Resource = "*"
       },
       {
