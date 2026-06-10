@@ -7,7 +7,6 @@
 # github-ci role — used by CI workflows to push Docker images to ECR
 # and deploy to Lambda by updating the function's container image.
 # ---------------------------------------------------------------------------
-
 resource "aws_iam_role_policy" "coffee_app_tf_apply" {
   name = "app-permissions"
   role = aws_iam_role.github_actions_tf_apply["devops-profile-coffee-card-app-demo"].name
@@ -48,34 +47,153 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
         ]
       },
       {
+        Sid    = "S3AppBuckets"
+        Effect = "Allow"
+        Action = [
+          "s3:CreateBucket",
+          "s3:DeleteBucket",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:GetBucketPolicy",
+          "s3:PutBucketPolicy",
+          "s3:DeleteBucketPolicy",
+          "s3:GetBucketAcl",
+          "s3:PutBucketAcl",
+          "s3:GetBucketOwnershipControls",
+          "s3:PutBucketOwnershipControls",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:GetBucketVersioning",
+          "s3:PutBucketVersioning",
+          "s3:GetEncryptionConfiguration",
+          "s3:PutEncryptionConfiguration",
+          "s3:GetBucketLogging",
+          "s3:PutBucketLogging",
+          "s3:GetBucketTagging",
+          "s3:PutBucketTagging",
+          "s3:GetBucketWebsite",
+          "s3:PutBucketWebsite",
+          "s3:GetBucketCORS",
+          "s3:PutBucketCORS",
+        ]
+        Resource = [
+          "arn:aws:s3:::coffee-card-*",
+          "arn:aws:s3:::coffee-card-*/*"
+        ]
+      },
+      {
+        Sid      = "ECRAuth"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
         Sid      = "ECR"
         Effect   = "Allow"
         Action   = ["ecr:*"]
-        Resource = "*"
+        Resource = "arn:aws:ecr:*:${data.aws_caller_identity.current.account_id}:repository/coffee-card-*"
       },
       {
         Sid      = "IAMPassRole"
         Effect   = "Allow"
         Action   = ["iam:PassRole", "iam:GetRole"]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/coffee-card-*"
+      },
+      {
+        Sid    = "IAMAppRoles"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/coffee-card-*"
+      },
+      {
+        Sid    = "SSMParameters"
+        Effect = "Allow"
+        Action = [
+          "ssm:PutParameter",
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:DeleteParameter",
+          "ssm:AddTagsToResource",
+          "ssm:RemoveTagsFromResource",
+          "ssm:ListTagsForResource",
+        ]
+        Resource = "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:parameter/coffee-card/*"
+      },
+      {
+        Sid    = "DynamoDB"
+        Effect = "Allow"
+        Action = ["dynamodb:*"]
+        Resource = [
+          "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/coffee-card-*",
+          "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/coffee-card-*/index/*"
+        ]
+      },
+      {
+        # List/discovery actions don't support resource-level restriction.
+        Sid      = "WAFList"
+        Effect   = "Allow"
+        Action   = ["wafv2:ListWebACLs", "wafv2:ListRuleGroups", "wafv2:ListAvailableManagedRuleGroups", "wafv2:ListAvailableManagedRuleGroupVersions"]
         Resource = "*"
       },
       {
-        Sid      = "DynamoDB"
+        Sid    = "WAF"
+        Effect = "Allow"
+        Action = ["wafv2:*"]
+        Resource = [
+          "arn:aws:wafv2:*:${data.aws_caller_identity.current.account_id}:*/webacl/coffee-card-*/*",
+          "arn:aws:wafv2:*:${data.aws_caller_identity.current.account_id}:*/rulegroup/coffee-card-*/*",
+          "arn:aws:wafv2:*:${data.aws_caller_identity.current.account_id}:*/ipset/coffee-card-*/*",
+          "arn:aws:wafv2:*:${data.aws_caller_identity.current.account_id}:*/regexpatternset/coffee-card-*/*"
+        ]
+      },
+      {
+        # Metric/alarm-list actions don't support resource-level restriction.
+        Sid      = "CloudWatchMetrics"
         Effect   = "Allow"
-        Action   = ["dynamodb:*"]
+        Action   = ["cloudwatch:PutMetricData", "cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics", "cloudwatch:DescribeAlarms"]
         Resource = "*"
       },
       {
-        Sid      = "WAF"
+        Sid    = "CloudWatchAlarms"
+        Effect = "Allow"
+        Action = ["cloudwatch:*"]
+        Resource = [
+          "arn:aws:cloudwatch:*:${data.aws_caller_identity.current.account_id}:alarm:coffee-card-*",
+          "arn:aws:cloudwatch::${data.aws_caller_identity.current.account_id}:dashboard/coffee-card-*"
+        ]
+      },
+      {
+        # DescribeLogGroups doesn't support resource-level restriction.
+        Sid      = "LogsDescribe"
         Effect   = "Allow"
-        Action   = ["wafv2:*", "waf-regional:*"]
+        Action   = ["logs:DescribeLogGroups"]
         Resource = "*"
       },
       {
-        Sid      = "Observability"
-        Effect   = "Allow"
-        Action   = ["cloudwatch:*", "logs:*"]
-        Resource = "*"
+        Sid    = "Logs"
+        Effect = "Allow"
+        Action = ["logs:*"]
+        Resource = [
+          "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/coffee-card-*",
+          "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/coffee-card-*:*",
+          "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/coffee-card-*",
+          "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/coffee-card-*:*"
+        ]
       },
     ]
   })
