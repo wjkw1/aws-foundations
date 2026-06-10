@@ -2,7 +2,7 @@
 
 This repository sets up the foundations for an AWS account.
 
-It uses Terraform to manage the security, billing, identity, and access setup — giving you repeatability when you need to securely set up an AWS account.
+It uses Terraform to manage the security, billing, identity, and access setup. Giving you repeatability when you need to securely set up an AWS account.
 
 ## Contents
 
@@ -78,7 +78,15 @@ This is a short-lived admin account just to run Terraform the first time.
 - Permissions: Attach `AdministratorAccess` directly
 - After creation: **Security credentials → Create access key**
   - Use case: CLI
-  - Save the Key ID and Secret - you only see the secret once, so make sure to copy it
+  - Save the Key ID and Secret - you only see the secret once, so make sure to copy it locally
+- Place keys in the `~/.aws/credentials` file:
+
+```zsh
+➜  cat ~/.aws/credentials
+[terraform]
+aws_access_key_id = AKIA3YW6XUWSCEXAMPLE
+aws_secret_access_key = t+TdY/Lvh4Rw32cGGUCUzsibkv4wPpmacEXAMPLE
+```
 
 ### 4. Configure AWS CLI locally
 
@@ -93,34 +101,7 @@ aws sts get-caller-identity --profile terraform
 export AWS_PROFILE=terraform
 ```
 
-### 5. Prepare terraform config files
-
-```zsh
-cd terraform
-
-# Copy examples and fill in your values
-cp backend.hcl.example backend.hcl
-cp terraform.tfvars.example terraform.tfvars
-
-```
-
-**backend.hcl** - your S3 state bucket name:
-
-```hcl
-bucket = "tfstate-<account-id>-aws-foundations"
-```
-
-> Get your account ID: `aws sts get-caller-identity --query Account --output text`
-
-**terraform.tfvars** - your Identity Center user details:
-
-```hcl
-user_email      = "you@example.com"
-user_first_name = "First"
-user_last_name  = "Last"
-```
-
-### 6. Create the s3 backend
+### 5. Create the s3 backend
 
 Terraform needs this bucket to exist before `terraform init`.
 
@@ -163,9 +144,36 @@ aws s3api put-public-access-block \
 echo "Bucket name: $AWS_BUCKET"
 ```
 
+### 6. Prepare terraform config files
+
+```zsh
+cd terraform
+
+# Copy examples and fill in your values
+cp backend.hcl.example backend.hcl
+cp terraform.tfvars.example terraform.tfvars
+
+```
+
+Edit the file **backend.hcl** and add your S3 state bucket name created above
+
+```hcl
+bucket = "tfstate-<account-id>-aws-foundations"
+```
+
+> Get your account ID: `aws sts get-caller-identity --query Account --output text`
+
+Edit the file **terraform.tfvars** and add your Identity Center user details:
+
+```hcl
+user_email      = "you@example.com"
+user_first_name = "First"
+user_last_name  = "Last"
+```
+
 ### 7. Run terraform
 
-Initialise your terraform setup
+Initialise your terraform setup and apply changes
 
 ```zsh
 cd terraform
@@ -224,51 +232,79 @@ Your `infra-admin` session lasts 1 hour, other roles last 8 hours.
 
 ## Granting a new repo GitHub Actions CI access
 
-CI access is controlled by the `github_repos` map in [terraform/github_repos.tf](terraform/github_repos.tf). Adding an entry there automatically creates a plan role and an apply role for that repo, each scoped to the correct S3 state bucket.
+CI access is controlled by the `github_repos` map in [terraform/github_repos.tf](terraform/github_repos.tf). Adding an entry there automatically creates a IaC plan role and an apply role for that repo, each scoped to the correct S3 state bucket.
 
-### 1. Add the repo
+### 1. Register the repo in `github_repos.tf`
 
-Two places to update:
-
-- `github_repos` create the required IAM roles and policies
-- `repos_needing_state_bucket` does what the name suggests, creates s3 buckets
+Open [terraform/github_repos.tf](terraform/github_repos.tf) and add your repo to `github_repos`.
 
 ```hcl
 locals {
   github_repos = {
-    "aws-foundations" = { state_bucket = var.foundations_state_bucket }
-    "devops-profile-coffee-card-app-demo" = {
-      state_bucket = aws_s3_bucket.terraform_state["devops-profile-coffee-card-app-demo"].id
+    "aws-foundations" = {
+      state_bucket        = var.foundations_state_bucket
+      manage_state_bucket = false
     }
-    # 1. add your resource here
-    "your-new-repo"   = { state_bucket = "tfstate-<account-id>-your-new-repo" }
-  }
-
-  repos_needing_state_bucket = {
     "devops-profile-coffee-card-app-demo" = {
-      state_bucket = "terraform-state-${data.aws_caller_identity.current.account_id}-coffee-card-app-demo"
+      state_bucket        = "terraform-state-${data.aws_caller_identity.current.account_id}-coffee-card-app-demo"
+      manage_state_bucket = true
     }
-    # 2. add your resource here if an S3 bucket is required
-    "your-new-repo" {
-      state_bucket = "terraform-state-${data.aws_caller_identity.current.account_id}-coffee-card-app-demo"
+    # Add your repo here.
+    "your-new-repo" = {
+      state_bucket        = "terraform-state-${data.aws_caller_identity.current.account_id}-your-new-repo"
+      manage_state_bucket = true
     }
   }
 }
 ```
 
-Each value must include `state_bucket` - the S3 bucket used as that repo's Terraform backend. The plan and apply roles are each granted read/write access to that bucket.
+Each entry must include:
 
-### 2. Apply changes
+- `state_bucket` - the S3 bucket used as that repo's Terraform backend. The plan and apply roles are each granted read/write access to it automatically.
+- `manage_state_bucket` - set to `true` if Terraform should create and manage this bucket. Set to `false` if the bucket already exists and is managed elsewhere (e.g. it's the backend bucket this same config relies on).
 
-Assumes you've setup SSO access with infra admin properly
+### 2. Create the repo IAM roles file
+
+Create a new file [terraform/repo_your_new_repo_iam_roles.tf](terraform/repo_your_new_repo_iam_roles.tf) (use underscores instead of hyphens in the filename). This file defines what the apply role is allowed to do in AWS.
+
+At minimum, attach an inline policy to the tf-apply role with the permissions that repo's Terraform needs:
+
+```hcl
+resource "aws_iam_role_policy" "your_new_repo_tf_apply" {
+  name = "app-permissions"
+  role = aws_iam_role.github_actions_tf_apply["your-new-repo"].name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "Example"
+        Effect   = "Allow"
+        Action   = ["s3:*", "lambda:*"]  # scope to what the repo's Terraform actually manages
+        Resource = "*"
+      },
+    ]
+  })
+}
+```
+
+If the repo also has a CI workflow that deploys (e.g. pushing a Docker image to ECR), add a separate `aws_iam_role` resource for that. See [terraform/repo_devops_profile_coffee_card_app_demo_iam_roles.tf](terraform/repo_devops_profile_coffee_card_app_demo_iam_roles.tf) for a real example that includes both a tf-apply policy and a CI deploy role.
+
+### 3. Apply the changes
+
+Recommended: open a PR with your changes. CI runs `terraform plan` and posts the output as a PR comment; merging to `main` triggers `terraform apply` automatically.
+
+If you need to apply manually instead:
 
 ```zsh
+aws sso login --profile infra-admin
+export AWS_PROFILE=infra-admin
 cd terraform
 terraform plan   # confirm two new roles appear: github-actions-tf-plan-<repo> and github-actions-tf-apply-<repo>
 terraform apply
 ```
 
-### 3. Configure the workflow in the new repo
+### 4. Configure the workflow in the new repo
 
 In the repo's GitHub Actions workflow, request the OIDC token and assume the appropriate role:
 
