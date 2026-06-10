@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "terraform/**"
+      - .github/workflows/apply-infra.yml
+      - .github/workflows/plan-infra.yml
 
 jobs:
   plan:
