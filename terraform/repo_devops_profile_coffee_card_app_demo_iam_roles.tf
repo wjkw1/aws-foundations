@@ -65,6 +65,7 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
           "s3:PutBucketOwnershipControls",
           "s3:GetBucketPublicAccessBlock",
           "s3:PutBucketPublicAccessBlock",
+          "s3:GetBucketRequestPayment",
           "s3:GetBucketVersioning",
           "s3:PutBucketVersioning",
           "s3:GetEncryptionConfiguration",
