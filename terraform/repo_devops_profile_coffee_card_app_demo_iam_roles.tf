@@ -77,6 +77,7 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
           "s3:PutBucketWebsite",
           "s3:GetBucketCORS",
           "s3:PutBucketCORS",
+          "s3:GetAccelerateConfiguration",
         ]
         Resource = [
           "arn:aws:s3:::coffee-card-*",
@@ -133,6 +134,12 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
           "ssm:ListTagsForResource",
         ]
         Resource = "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:parameter/coffee-card/*"
+      },
+      {
+        Sid      = "SSMDescribe"
+        Effect   = "Allow"
+        Action   = ["ssm:DescribeParameters"]
+        Resource = "*"
       },
       {
         Sid    = "DynamoDB"
