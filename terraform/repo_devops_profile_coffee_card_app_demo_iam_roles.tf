@@ -226,7 +226,7 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
 }
 
 resource "aws_iam_role" "github_ci_coffee_app" {
-  name        = "github-actions-ci-devops-profile-coffee-card-app-demo"
+  name        = "github-actions-deploy-devops-profile-coffee-card-app-demo"
   description = "GitHub Actions - CI deploy for coffee-card-app-demo (ECR push + Lambda update)"
 
   assume_role_policy = jsonencode({
