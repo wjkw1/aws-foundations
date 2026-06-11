@@ -145,9 +145,14 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
       },
       {
         # List/discovery actions don't support resource-level restriction.
-        Sid      = "WAFList"
-        Effect   = "Allow"
-        Action   = ["wafv2:ListWebACLs", "wafv2:ListRuleGroups", "wafv2:ListAvailableManagedRuleGroups", "wafv2:ListAvailableManagedRuleGroupVersions"]
+        Sid    = "WAFList"
+        Effect = "Allow"
+        Action = [
+          "wafv2:ListWebACLs",
+          "wafv2:ListRuleGroups",
+          "wafv2:ListAvailableManagedRuleGroups",
+          "wafv2:ListAvailableManagedRuleGroupVersions"
+        ]
         Resource = "*"
       },
       {
@@ -162,7 +167,12 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
         ]
       },
       {
-        # Metric/alarm-list actions don't support resource-level restriction.
+        Sid      = "WAFManagedRuleSets"
+        Effect   = "Allow"
+        Action   = ["wafv2:UpdateWebACL"]
+        Resource = "arn:aws:wafv2:*:${data.aws_caller_identity.current.account_id}:*/managedruleset/*/*"
+      },
+      {
         Sid      = "CloudWatchMetrics"
         Effect   = "Allow"
         Action   = ["cloudwatch:PutMetricData", "cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics", "cloudwatch:DescribeAlarms"]
@@ -182,6 +192,22 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
         Sid      = "LogsDescribe"
         Effect   = "Allow"
         Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
+      },
+      {
+        # API Gateway access logging is set up via the CreateLogDelivery
+        # service-linked APIs, which don't support resource-level restriction.
+        Sid    = "LogsDelivery"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogDelivery",
+          "logs:GetLogDelivery",
+          "logs:UpdateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutResourcePolicy",
+          "logs:DescribeResourcePolicies",
+        ]
         Resource = "*"
       },
       {
