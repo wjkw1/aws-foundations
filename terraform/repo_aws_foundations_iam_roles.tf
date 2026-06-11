@@ -37,6 +37,7 @@ resource "aws_iam_role_policy" "aws_foundations_tf_apply" {
           "iam:DeleteRolePolicy",
           "iam:GetRolePolicy",
           "iam:ListRolePolicies",
+          "iam:ListInstanceProfilesForRole",
           "iam:CreateOpenIDConnectProvider",
           "iam:DeleteOpenIDConnectProvider",
           "iam:GetOpenIDConnectProvider",
