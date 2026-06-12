@@ -44,3 +44,13 @@
      --action-names cloudfront:CreateInvalidation \
      --resource-arns "arn:aws:cloudfront::${AWS_ACCOUNT_ID}:distribution/${CF_DIST_ID}"
    ```
+
+5. aws s3 sync dist/ s3://coffee-card-frontend-prod (and -stage) — verify the S3FrontendDeploy statement grants PutObject/PutObjectAcl/DeleteObject on frontend bucket objects:
+
+   ```zsh
+   aws iam simulate-principal-policy \
+   --policy-source-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/github-actions-deploy-devops-profile-coffee-card-app-demo \
+     --action-names s3:PutObject s3:PutObjectAcl s3:DeleteObject \
+     --resource-arns "arn:aws:s3:::coffee-card-frontend-prod/index.html" "arn:aws:s3:::coffee-card-frontend-stage/index.html" \
+     --context-entries ContextKeyName=aws:ResourceAccount,ContextKeyValues=${AWS_ACCOUNT_ID},ContextKeyType=string
+   ```
