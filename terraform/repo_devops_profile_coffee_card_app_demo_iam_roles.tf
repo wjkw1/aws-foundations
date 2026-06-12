@@ -47,10 +47,18 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
         ]
       },
       {
+        # CreateBucket can't use the aws:ResourceAccount condition below:
+        # the bucket doesn't exist yet at evaluation time, so the condition
+        # would never match and the call would always be denied.
+        Sid      = "S3AppBucketsCreate"
+        Effect   = "Allow"
+        Action   = ["s3:CreateBucket"]
+        Resource = "arn:aws:s3:::coffee-card-*"
+      },
+      {
         Sid    = "S3AppBuckets"
         Effect = "Allow"
         Action = [
-          "s3:CreateBucket",
           "s3:DeleteBucket",
           "s3:Get*",
           "s3:List*",
@@ -75,6 +83,11 @@ resource "aws_iam_role_policy" "coffee_app_tf_apply" {
           "arn:aws:s3:::coffee-card-*",
           "arn:aws:s3:::coffee-card-*/*"
         ]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       },
       {
         Sid      = "ECRAuth"
@@ -238,7 +251,10 @@ resource "aws_iam_role" "github_ci_coffee_app" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/devops-profile-coffee-card-app-demo:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = [
+            "repo:${var.github_org}/devops-profile-coffee-card-app-demo:ref:refs/heads/main",
+            "repo:${var.github_org}/devops-profile-coffee-card-app-demo:pull_request",
+          ]
         }
       }
     }]
@@ -282,6 +298,43 @@ resource "aws_iam_role_policy" "github_ci_coffee_app" {
         ]
         Resource = "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:coffee-card-api*"
       },
+      {
+        Sid      = "CloudFrontList"
+        Effect   = "Allow"
+        Action   = ["cloudfront:ListDistributions"]
+        Resource = "*"
+      },
+      {
+        Sid      = "CloudFrontInvalidation"
+        Effect   = "Allow"
+        Action   = ["cloudfront:CreateInvalidation"]
+        Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/*"
+      },
+      {
+        Sid    = "S3Read"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectAcl",
+          "s3:GetObjectAttributes",
+          "s3:GetObjectLegalHold",
+          "s3:GetObjectRetention",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::coffee-card-frontend-stage",
+          "arn:aws:s3:::coffee-card-frontend-stage/*",
+          "arn:aws:s3:::coffee-card-frontend-prod",
+          "arn:aws:s3:::coffee-card-frontend-prod/*",
+          "arn:aws:s3:::coffee-card*",
+          "arn:aws:s3:::coffee-card*/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
     ]
   })
 }
