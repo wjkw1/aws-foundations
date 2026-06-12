@@ -26,6 +26,7 @@ resource "aws_iam_role_policy" "aws_foundations_tf_apply" {
           "iam:DeleteRole",
           "iam:GetRole",
           "iam:UpdateRole",
+          "iam:UpdateAssumeRolePolicy",
           "iam:TagRole",
           "iam:UntagRole",
           "iam:ListRoles",
