@@ -334,6 +334,24 @@ resource "aws_iam_role_policy" "github_ci_coffee_app" {
             "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
+      },
+      {
+        Sid    = "S3FrontendDeploy"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::coffee-card-frontend-stage/*",
+          "arn:aws:s3:::coffee-card-frontend-prod/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       }
     ]
   })
